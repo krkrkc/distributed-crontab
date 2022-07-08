@@ -1,7 +1,6 @@
 package master
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
 	"github.com/krkrkc/distributed-crontab/common"
@@ -13,9 +12,13 @@ type ApiServer struct {
 	Engine gin.Engine
 }
 
+var (
+	G_apiServer *ApiServer
+)
+
 func handleJobSave(c *gin.Context) {
 	message := c.PostForm("job")
-	fmt.Println(message)
+	//fmt.Println(message)
 	var job common.Job
 	if err := json.Unmarshal([]byte(message), &job); err != nil {
 		resp := common.Response{
@@ -45,12 +48,31 @@ func handleJobSave(c *gin.Context) {
 	}
 }
 
-var (
-	G_apiServer *ApiServer
-)
+func handleJobDelete(c *gin.Context) {
+	jobName := c.PostForm("name")
+	oldJob, err := G_jobMgr.DeleteJob(jobName)
+	if err != nil {
+		resp := common.Response{
+			Errno: -1,
+			Msg:   err.Error(),
+			Data:  nil,
+		}
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	} else {
+		oldJobMsg, _ := json.Marshal(oldJob)
+		resp := common.Response{
+			Errno: 1,
+			Msg:   "success",
+			Data:  string(oldJobMsg),
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+}
 
 func InitApiServer() {
 	engine := gin.Default()
 	engine.POST("/job/save", handleJobSave)
+	engine.POST("job/delete/", handleJobDelete)
 	engine.Run(":" + strconv.Itoa(G_config.ApiPort))
 }

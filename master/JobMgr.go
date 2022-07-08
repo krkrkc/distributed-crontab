@@ -69,3 +69,23 @@ func (j *JobMgr) SaveJob(job *common.Job) (oldJob *common.Job, err error) {
 	}
 	return
 }
+
+func (j *JobMgr) DeleteJob(jobName string) (*common.Job, error) {
+	jobKey := common.JobSaveDir + jobName
+	deleteResp, err := j.kv.Delete(context.TODO(), jobKey, clientv3.WithPrevKV())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(deleteResp.PrevKvs) > 0 {
+		var oldJob common.Job
+		err = json.Unmarshal(deleteResp.PrevKvs[0].Value, &oldJob)
+		if err != nil {
+			return nil, err
+		}
+
+		return &oldJob, nil
+	}
+
+	return nil, nil
+}
