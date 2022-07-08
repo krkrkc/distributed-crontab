@@ -36,7 +36,6 @@ func handleJobSave(c *gin.Context) {
 			Data:  nil,
 		}
 		c.JSON(http.StatusBadRequest, resp)
-		return
 	} else {
 		oldJobMsg, _ := json.Marshal(oldJob)
 		resp := common.Response{
@@ -58,7 +57,6 @@ func handleJobDelete(c *gin.Context) {
 			Data:  nil,
 		}
 		c.JSON(http.StatusBadRequest, resp)
-		return
 	} else {
 		oldJobMsg, _ := json.Marshal(oldJob)
 		resp := common.Response{
@@ -70,9 +68,29 @@ func handleJobDelete(c *gin.Context) {
 	}
 }
 
+func handleJobList(c *gin.Context) {
+	jobs, err := G_jobMgr.ListJob()
+	if err != nil {
+		resp := common.Response{
+			Errno: -1,
+			Msg:   err.Error(),
+			Data:  nil,
+		}
+		c.JSON(http.StatusBadRequest, resp)
+	} else {
+		resp := common.Response{
+			Errno: 1,
+			Msg:   "success",
+			Data:  jobs,
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
 func InitApiServer() {
 	engine := gin.Default()
 	engine.POST("/job/save", handleJobSave)
-	engine.POST("job/delete/", handleJobDelete)
+	engine.POST("/job/delete/", handleJobDelete)
+	engine.GET("/job/list", handleJobList)
 	engine.Run(":" + strconv.Itoa(G_config.ApiPort))
 }

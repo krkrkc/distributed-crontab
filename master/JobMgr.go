@@ -89,3 +89,19 @@ func (j *JobMgr) DeleteJob(jobName string) (*common.Job, error) {
 
 	return nil, nil
 }
+
+func (j *JobMgr) ListJob() ([]*common.Job, error) {
+	getResp, err := j.kv.Get(context.TODO(), common.JobSaveDir, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var jobs []*common.Job
+	for _, res := range getResp.Kvs {
+		var job common.Job
+		err = json.Unmarshal(res.Value, &job)
+		jobs = append(jobs, &job)
+	}
+
+	return jobs, nil
+}
