@@ -105,3 +105,18 @@ func (j *JobMgr) ListJob() ([]*common.Job, error) {
 
 	return jobs, nil
 }
+
+func (j *JobMgr) KillJob(jobName string) error {
+	killKey := common.JobKillDir + jobName
+
+	grantResp, err := j.lease.Grant(context.TODO(), 1)
+	if err != nil {
+		return err
+	}
+
+	_, err = j.kv.Put(context.TODO(), killKey, "", clientv3.WithLease(grantResp.ID))
+	if err != nil {
+		return err
+	}
+	return nil
+}

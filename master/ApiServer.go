@@ -1,6 +1,7 @@
 package master
 
 import (
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
 	"github.com/krkrkc/distributed-crontab/common"
@@ -87,10 +88,34 @@ func handleJobList(c *gin.Context) {
 	}
 }
 
+func handleKillJob(c *gin.Context) {
+	jobName := c.PostForm("name")
+	err := G_jobMgr.KillJob(jobName)
+	if err != nil {
+		resp := &common.Response{
+			Errno: -1,
+			Msg:   err.Error(),
+			Data:  nil,
+		}
+		c.JSON(http.StatusBadRequest, resp)
+	} else {
+		resp := &common.Response{
+			Errno: 1,
+			Msg:   "success",
+			Data:  nil,
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
 func InitApiServer() {
 	engine := gin.Default()
+	engine.Use(static.Serve("/", static.LocalFile(G_config.WebRoot, true)))
 	engine.POST("/job/save", handleJobSave)
-	engine.POST("/job/delete/", handleJobDelete)
+	engine.POST("/job/delete", handleJobDelete)
 	engine.GET("/job/list", handleJobList)
+	engine.POST("/job/kill", handleKillJob)
+	//engine.Static("/static", G_config.WebRoot)
+
 	engine.Run(":" + strconv.Itoa(G_config.ApiPort))
 }
