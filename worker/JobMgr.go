@@ -68,7 +68,7 @@ func (j *JobMgr) watchJobs() error {
 		if err == nil {
 			//TODO
 			jobEvent := common.BuildJobEvent(common.JobEventSave, job)
-			jobEvent = jobEvent
+			G_schduler.PushJobEvent(jobEvent)
 		}
 	}
 
@@ -77,22 +77,20 @@ func (j *JobMgr) watchJobs() error {
 		watchChan := j.watcher.Watch(context.TODO(), common.JobSaveDir, clientv3.WithRev(watchStartRevision), clientv3.WithPrefix())
 		for watchResp := range watchChan {
 			for _, watchEvent := range watchResp.Events {
+				var jobEvent *common.JobEvent
 				switch watchEvent.Type {
 				case mvccpb.PUT:
 					job, err := common.UnpackJob(watchEvent.Kv.Value)
 					if err != nil {
 						continue
 					}
-					jobEvent := common.BuildJobEvent(common.JobEventSave, job)
-					//TODO
-					fmt.Println(jobEvent)
+					jobEvent = common.BuildJobEvent(common.JobEventSave, job)
 				case mvccpb.DELETE:
 					jobName := common.ExtractJobName(string(watchEvent.Kv.Value))
 					job := &common.Job{Name: jobName}
-					jobEvent := common.BuildJobEvent(common.JobEventDelete, job)
-					//TODO
-					fmt.Println(jobEvent)
+					jobEvent = common.BuildJobEvent(common.JobEventDelete, job)
 				}
+				G_schduler.PushJobEvent(jobEvent)
 			}
 		}
 	}()

@@ -28,9 +28,17 @@ func main() {
 		goto ERR
 	}
 
+	worker.InitSchduler()
+
+	if err = worker.InitExcutor(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	if err = worker.InitJobMgr(); err != nil {
 		goto ERR
 	}
+
 	for {
 		time.Sleep(1 * time.Second)
 	}
