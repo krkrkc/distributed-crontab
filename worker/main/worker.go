@@ -13,6 +13,7 @@ var (
 
 func initArgs() {
 	flag.StringVar(&confFile, "config", "./worker/main/worker.json", "指定worker.json")
+	//flag.StringVar(&confFile, "config", "./worker.json", "指定worker.json")
 	flag.Parse()
 }
 
@@ -26,6 +27,11 @@ func main() {
 
 	if err = worker.InitConfig(confFile); err != nil {
 		goto ERR
+	}
+
+	if err = worker.InitLogSink(); err != nil {
+		fmt.Println(err)
+		return
 	}
 
 	worker.InitSchduler()

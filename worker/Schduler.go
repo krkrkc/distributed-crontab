@@ -60,6 +60,11 @@ func (schduler *Schduler) handleJobEvent(jobEvent *common.JobEvent) {
 		if exist {
 			delete(schduler.JobPlanTable, jobEvent.Job.Name)
 		}
+	case common.JobEventKill:
+		jobExecuteInfo, exist := schduler.JobExcutingTable[jobEvent.Job.Name]
+		if exist {
+			jobExecuteInfo.CancleFunc()
+		}
 	}
 }
 
@@ -74,6 +79,7 @@ func (schduler Schduler) TrySchdule() time.Duration {
 	for _, jobPlan := range schduler.JobPlanTable {
 		if jobPlan.NextTime.Before(now) || jobPlan.NextTime.Equal(now) {
 			jobPlan.NextTime = jobPlan.Expr.Next(now)
+			fmt.Println("schdule time:", now, ",next time:", jobPlan.NextTime)
 			schduler.TryStartJob(jobPlan)
 		}
 
@@ -105,5 +111,22 @@ func (schduler *Schduler) PushJobResult(jobResult *common.JobExecuteResult) {
 
 func (schduler *Schduler) handleJobResult(jobResult *common.JobExecuteResult) {
 	delete(schduler.JobExcutingTable, jobResult.ExecuteInfo.Job.Name)
-	fmt.Println("finish:", jobResult.ExecuteInfo.Job.Name, "start:", jobResult.StartTime, "endtime:", jobResult.EndTime, "output:", string(jobResult.OutPut))
+	if jobResult.Err != common.ERR_LOCK_ALREADY_REQUIRED {
+		jobLog := &common.JobLog{
+			JobName:     jobResult.ExecuteInfo.Job.Name,
+			Command:     jobResult.ExecuteInfo.Job.Command,
+			Output:      string(jobResult.OutPut),
+			PlanTime:    jobResult.ExecuteInfo.PlanTime.Unix(),
+			SchduleTime: jobResult.ExecuteInfo.RealTime.Unix(),
+			StartTime:   jobResult.StartTime.Unix(),
+			EndTime:     jobResult.EndTime.Unix(),
+		}
+		if jobResult.Err != nil {
+			jobLog.Err = jobResult.Err.Error()
+		} else {
+			jobLog.Err = ""
+		}
+		G_logSink.Append(jobLog)
+	}
+	//fmt.Println("finish:", jobResult.ExecuteInfo.Job.Name, "start:", jobResult.StartTime, "endtime:", jobResult.EndTime, "output:", string(jobResult.OutPut))
 }

@@ -1,8 +1,9 @@
 package worker
 
 import (
-	"context"
+	"fmt"
 	"github.com/krkrkc/distributed-crontab/common"
+	"math/rand"
 	"os/exec"
 	"time"
 )
@@ -21,13 +22,24 @@ func (executor *Excutor) ExecuteJob(info *common.JobExcutingInfo) {
 			OutPut:      make([]byte, 0),
 		}
 
-		result.StartTime = time.Now()
-		cmd := exec.CommandContext(context.TODO(), "C:\\cygwin64\\bin\\bash.exe", "-c", info.Job.Command)
-		output, err := cmd.CombinedOutput()
-		result.EndTime = time.Now()
+		jobLock := G_jobMgr.CreatJobLock(info.Job.Name)
 
-		result.OutPut = output
-		result.Err = err
+		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+		err := jobLock.TryLock()
+		defer jobLock.UnLock()
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			result.StartTime = time.Now()
+			cmd := exec.CommandContext(info.CancleCtx, "C:\\cygwin64\\bin\\bash.exe", "-c", info.Job.Command)
+			//cmd := exec.CommandContext(info.CancleCtx, "ping", "baidu.com")
+			//cmd := exec.CommandContext(info.CancleCtx, info.Job.Command)
+			output, err := cmd.CombinedOutput()
+			result.EndTime = time.Now()
+
+			result.OutPut = output
+			result.Err = err
+		}
 
 		G_schduler.PushJobResult(result)
 	}()

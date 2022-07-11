@@ -54,11 +54,16 @@ func InitJobMgr() (err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	err = G_jobMgr.watchKiller()
+	if err != nil {
+		fmt.Println(err)
+	}
 	return
 }
 
-func (j *JobMgr) watchJobs() error {
-	getResp, err := j.kv.Get(context.TODO(), common.JobSaveDir, clientv3.WithPrefix())
+func (jobMgr *JobMgr) watchJobs() error {
+	getResp, err := jobMgr.kv.Get(context.TODO(), common.JobSaveDir, clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
@@ -74,7 +79,7 @@ func (j *JobMgr) watchJobs() error {
 
 	go func() {
 		watchStartRevision := getResp.Header.Revision + 1
-		watchChan := j.watcher.Watch(context.TODO(), common.JobSaveDir, clientv3.WithRev(watchStartRevision), clientv3.WithPrefix())
+		watchChan := jobMgr.watcher.Watch(context.TODO(), common.JobSaveDir, clientv3.WithRev(watchStartRevision), clientv3.WithPrefix())
 		for watchResp := range watchChan {
 			for _, watchEvent := range watchResp.Events {
 				var jobEvent *common.JobEvent
@@ -95,4 +100,35 @@ func (j *JobMgr) watchJobs() error {
 		}
 	}()
 	return nil
+}
+
+func (jobMgr *JobMgr) CreatJobLock(jobName string) *JobLock {
+	return InitJobLock(jobName, jobMgr.kv, jobMgr.lease)
+}
+
+func (jobMgr *JobMgr) watchKiller() error {
+	getResp, err := jobMgr.kv.Get(context.TODO(), common.JobKillDir, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		watchStartRevision := getResp.Header.Revision + 1
+		watchChan := jobMgr.watcher.Watch(context.TODO(), common.JobKillDir, clientv3.WithRev(watchStartRevision), clientv3.WithPrefix())
+		for watchResp := range watchChan {
+			for _, watchEvent := range watchResp.Events {
+				var jobEvent *common.JobEvent
+				switch watchEvent.Type {
+				case mvccpb.PUT:
+					jobName := common.ExtractKillJobName(string(watchEvent.Kv.Key))
+					fmt.Println("kill job:", jobName)
+					job := &common.Job{Name: jobName}
+					jobEvent = common.BuildJobEvent(common.JobEventKill, job)
+					G_schduler.PushJobEvent(jobEvent)
+				}
+			}
+		}
+	}()
+	return nil
+
 }
