@@ -34,6 +34,11 @@ func main() {
 		return
 	}
 
+	if err = worker.InitRegister(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	worker.InitSchduler()
 
 	if err = worker.InitExcutor(); err != nil {

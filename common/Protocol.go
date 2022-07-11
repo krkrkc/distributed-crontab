@@ -79,6 +79,10 @@ func ExtractKillJobName(jobKey string) string {
 	return strings.TrimPrefix(jobKey, JobKillDir)
 }
 
+func ExtractWorkerIP(workerKey string) string {
+	return strings.TrimPrefix(workerKey, JobKillDir)
+}
+
 func BuildJobEvent(eventType int, job *Job) (jobEvent *JobEvent) {
 	return &JobEvent{
 		EventType: eventType,

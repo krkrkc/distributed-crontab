@@ -108,6 +108,25 @@ func handleKillJob(c *gin.Context) {
 	}
 }
 
+func handleWorkerList(c *gin.Context) {
+	workerArr, err := G_workerMgr.ListWorkers()
+	if err != nil {
+		resp := &common.Response{
+			Errno: -1,
+			Msg:   err.Error(),
+			Data:  nil,
+		}
+		c.JSON(http.StatusBadRequest, resp)
+	} else {
+		resp := &common.Response{
+			Errno: 1,
+			Msg:   "success",
+			Data:  workerArr,
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
 func InitApiServer() {
 	engine := gin.Default()
 	engine.Use(static.Serve("/", static.LocalFile(G_config.WebRoot, true)))
@@ -115,6 +134,7 @@ func InitApiServer() {
 	engine.POST("/job/delete", handleJobDelete)
 	engine.GET("/job/list", handleJobList)
 	engine.POST("/job/kill", handleKillJob)
+	engine.GET("/worker/list", handleWorkerList)
 	//engine.Static("/static", G_config.WebRoot)
 
 	engine.Run(":" + strconv.Itoa(G_config.ApiPort))
